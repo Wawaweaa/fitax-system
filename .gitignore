@@ -4,3 +4,9 @@ node_modules/
 uploads/
 data/
 
+node_modules/
+.next/
+.vercel/
+uploads/
+data/
+
