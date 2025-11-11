@@ -6,6 +6,23 @@ import crypto from 'node:crypto';
 import { NextResponse } from 'next/server';
 import { v4 as uuidv4 } from 'uuid';
 
+function toJSONSafe(value: any): any {
+  if (typeof value === 'bigint') {
+    return Number(value);
+  }
+  if (Array.isArray(value)) {
+    return value.map(item => toJSONSafe(item));
+  }
+  if (value && typeof value === 'object') {
+    const result: Record<string, any> = {};
+    for (const [key, val] of Object.entries(value)) {
+      result[key] = toJSONSafe(val);
+    }
+    return result;
+  }
+  return value;
+}
+
 // 确保目录存在
 export async function ensureDir(dir: string) {
   await fs.mkdir(dir, { recursive: true });
@@ -38,10 +55,11 @@ export async function getRequestId(headers?: Headers): Promise<string> {
 
 // API 成功响应
 export async function getSuccessResponse(data: any, requestId?: string): Promise<NextResponse> {
+  const safeData = toJSONSafe(data);
   return NextResponse.json(
     {
       request_id: requestId || `req-${uuidv4()}`,
-      data
+      data: safeData
     },
     {
       status: 200
@@ -98,5 +116,12 @@ export async function apiError(message: string, code: number = 500) {
   };
 }
 
-// 常用工具导出
-export { path, crypto };
+// 提供node:path的path模块
+export async function getPath(): Promise<typeof path> {
+  return path;
+}
+
+// 提供node:crypto的crypto模块
+export async function getCrypto(): Promise<typeof crypto> {
+  return crypto;
+}

@@ -1,11 +1,12 @@
 "use client"
 
 import { formatFileSize } from "@/lib/format"
-import type { RequiredFile, UploadedFile } from "@/lib/types"
+import type { RequiredFile } from "@/lib/platform-config"
+import type { UploadFileType, UploadedFile } from "@/lib/types"
 
 interface FileStatusListProps {
   requiredFiles: RequiredFile[]
-  files: Record<string, UploadedFile>
+  files: Record<UploadFileType, UploadedFile>
 }
 
 export function FileStatusList({ requiredFiles, files }: FileStatusListProps) {

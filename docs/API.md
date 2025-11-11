@@ -1,74 +1,121 @@
-# API 规格
+# API 规格（MVP/P0）
 
-## 核心端点
-### POST /api/upload
-- form-data：`platform` + 所需文件字段（如 `settlement`, `orders`）。
-- dev-local：保存到 `uploads/`；云环境：仅返回预签名 URL（`/api/upload-signed`）。
-- 返回：`{ uploadId, platform, files: [...] }`
-- 错误码：400/413/415/422。
+## 通用要求
+- 所有请求需携带租户身份（`user_id`），可通过认证中间件注入。
+- 返回结构：`{ request_id, message, data?, code? }`，便于日志追踪。
+- 错误码：400 参数非法、401 未授权、403 禁止、404 找不到资源、409 冲突、422 校验失败、429 速率限制、500 内部错误。
 
-### GET /api/upload-signed
-- 入参：`{ platform, fileKey, contentType }`
-- 返回：`{ uploadUrl, expiresIn }`
-- 存储通过 `Storage` driver 决定 S3 或 OSS。
+## 1. POST /api/upload
+- 功能：接收文件、计算 SHA256 `content_hash`，判断是否重复。
+- 入参（multipart/form-data）：
+  - `platform`: `xiaohongshu|douyin|wechat_video`
+  - 文件字段：`settlement`（必）、`orders`（小红书/抖音必需）
+  - 服务端从认证中获取 `user_id`
+- 输出：
+```json
+{
+  "request_id": "...",
+  "data": {
+    "uploadId": "ULP-...",
+    "contentHash": "sha256...",
+    "isDuplicateFile": false,
+    "fileType": "settlement" | "orders"
+  }
+}
+```
+- 行为：
+  - 计算 `content_hash`
+  - 若 `(user_id, platform, file_type, content_hash)` 已存在 → `isDuplicateFile=true`、复用旧 `upload_id`
+  - 否则保存原始文件至 `raw/` 并登记 `uploads`
 
-### POST /api/process
-- 入参：`{ platform, uploadId, year, month }`
-- dev-local：同步执行 S0/S1。
-- 云环境：写入队列 → Worker 处理。
-- 返回：`{ jobId, factRows?, aggRows?, warnings[] }`
+## 2. POST /api/process
+- 功能：触发数据处理；支持 merge/replace。
+- 入参（JSON）：
+```json
+{
+  "platform": "xiaohongshu",
+  "year": 2025,
+  "month": 8,
+  "mode": "merge" | "replace",
+  "uploads": {
+    "settlementUploadId": "...",
+    "ordersUploadId": "..."
+  }
+}
+```
+- 输出：`{ request_id, data: { jobId, status: "queued" } }`
+- 行为：
+  - 推导 `dataset_id = hash(user_id, platform, year, month, file_type)`
+  - 若所有文件 `isDuplicateFile=true` 且已有有效数据 → 返回复用信息
+  - 否则入队 `{ jobId, userId, platform, year, month, mode, datasetId, files }`
+  - 记录作业状态 pending → processing → completed/failed
 
-### GET /api/process-status
-- 入参：`jobId`
-- 返回：`{ status: pending|running|failed|completed, detail }`
+## 3. GET /api/job/[jobId]
+- 功能：查询作业状态。
+- 输出：
+```json
+{
+  "request_id": "...",
+  "data": {
+    "jobId": "...",
+    "status": "queued"|"processing"|"succeeded"|"failed",
+    "datasetId": "...",
+    "warnings": [...],
+    "progress": 80,
+    "error": "..."
+  }
+}
+```
+- 若失败，需包含 `error` 描述；成功需返回 `datasetId` 及统计信息。
 
-### GET /api/preview
-- Query：`platform`, `year`, `month`, `sku`, `view` (`fact|agg`), `page`, `pageSize`, `sort`。
-- dev-local：查询 DuckDB 表。
-- 云环境：从 Parquet (DuckDB httpfs) 或 Metadata DB 读取。
-- 返回：行级 A–O 或汇总列。
+## 4. GET /api/preview
+- 功能：读取有效视图数据。
+- Query 参数：`view=fact|agg`（默认 `fact`）、`platform`, `year`, `month`, `sku`（可选）、`page`, `pageSize`, `sort`。
+- 行为：
+  - 只读取 `fact_settlement_effective`/`agg_month_sku_effective`
+  - 分页：默认 `page=1,pageSize=50`（最大 500）
+  - 返回格式：`{ data: rows[], pagination: { page, pageSize, total }, summary: {...} }`
 
-### GET /api/export
-- Query 同 preview + `view`。
-- dev-local：即时生成 xlsx。
-- 云环境：Worker 生成后上传 `exports/`，返回签名下载链接。
+## 5. GET /api/export
+- 功能：导出当前筛选数据。
+- Query：与 preview 相同，另加 `format=csv|xlsx`（默认 `xlsx`）、`inline=0|1`。
+- 行为：
+  - 生产：生成 xlsx 至 `exports/`，返回签名下载 URL + 过期时间
+  - 测试：若 `inline=1` 或 Header `x-test-inline=1` → 直接返回 `text/csv` 内容
+  - 返回结构：
+```json
+{
+  "request_id": "...",
+  "data": {
+    "downloadUrl": "https://...",
+    "expiresAt": "..."
+  }
+}
+```
+  - CSV 格式：无千分位、两位小数、列顺序固定、首行表头。
 
-## 内部/运维 API
-- `POST /api/worker/trigger`: 手动触发 Worker（可选）。
-- `GET /api/metrics`: 暴露 Prometheus 指标（处理成功率、耗时、队列长度等）。
+## 6. 辅助 API（可选）
+- `GET /api/uploads`：列出用户上传记录（含重复判断、状态）。
+- `GET /api/datasets`：查询 dataset 当前有效版本。
+- `POST /api/exports/retry`：重试导出（留待后续）。
 
-## 签名/直传流程
-1. 浏览器调用 `/api/upload-signed`（传 `fileKey`, `contentType`）。
-2. 服务端使用 `Storage` driver 生成预签名 URL。
-3. 浏览器直传至对象存储。
-4. 成功后调用 `/api/process` 排队执行。
-
-## 队列消息结构
+## 7. Queue & Worker 协议
+- 消息格式：
 ```json
 {
   "jobId": "...",
-  "platform": "xiaohongshu",
-  "uploadId": "...",
+  "userId": "...",
+  "platform": "...",
   "year": 2025,
   "month": 8,
-  "files": ["raw/...xlsx"],
-  "requestedBy": "userId",
-  "requestedAt": "ISO8601"
+  "mode": "merge",
+  "datasetId": "...",
+  "files": {
+    "settlement": "raw/user_id=.../platform=.../...",
+    "orders": "raw/..."
+  }
 }
 ```
+- Worker 完成后调用 `updateJobStatus(jobId, 'succeeded', ...)`。
+- 失败时记录错误，支持重试；多次失败后标记 `failed` 并通知。
 
-## 错误码规范
-- 400：参数缺失/不合法。
-- 401：未授权（未来迭代）。
-- 403：禁止访问。
-- 404：资源不存在（uploadId/jobId）。
-- 413：文件过大。
-- 415：文件类型不支持。
-- 422：业务校验失败（主键冲突、金额闭合失败等）。
-- 429：请求过多（速率限制）。
-- 500：服务器错误。
-
-## 日志与追踪
-- 每个 job 记录 `jobId`, `platform`, `uploadId`, `status`, `duration`, `errors`。
-- 失败任务写入错误详情（含样本行号、字段信息），供重试。
-- 使用 Sentry/阿里云 SLS 投递结构化日志。

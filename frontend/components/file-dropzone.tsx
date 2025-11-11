@@ -7,12 +7,12 @@ import { useCallback, useRef, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { formatFileSize } from "@/lib/format"
-import type { UploadedFile } from "@/lib/types"
+import type { UploadFileType, UploadedFile } from "@/lib/types"
 
 interface FileDropzoneProps {
-  requiredFiles: Array<{ key: string; label: string; patterns: string[] }>
-  files: Record<string, UploadedFile>
-  onChange: (files: Record<string, UploadedFile>) => void
+  requiredFiles: Array<{ key: UploadFileType; label: string; patterns: string[] }>
+  files: Record<UploadFileType, UploadedFile>
+  onChange: (files: Record<UploadFileType, UploadedFile>) => void
 }
 
 export function FileDropzone({ requiredFiles, files, onChange }: FileDropzoneProps) {
@@ -42,7 +42,10 @@ export function FileDropzone({ requiredFiles, files, onChange }: FileDropzonePro
 
         if (matchedFile) {
           console.log("[v0] Matched file to key:", matchedFile.key)
-          newFiles[matchedFile.key] = { name: file.name, size: file.size, file }
+          newFiles[matchedFile.key] = {
+            key: matchedFile.key,
+            file,
+          }
         } else {
           console.log("[v0] No match found for file:", file.name)
         }
@@ -82,7 +85,7 @@ export function FileDropzone({ requiredFiles, files, onChange }: FileDropzonePro
     inputRef.current?.click()
   }, [])
 
-  const removeFile = (key: string) => {
+  const removeFile = (key: UploadFileType) => {
     const newFiles = { ...files }
     delete newFiles[key]
     onChange(newFiles)
@@ -135,15 +138,20 @@ export function FileDropzone({ requiredFiles, files, onChange }: FileDropzonePro
             <Card key={key} className="p-3">
               <div className="flex items-center justify-between">
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium truncate">{file.name}</p>
+                  <p className="text-sm font-medium truncate">{file.file.name}</p>
                   <p className="text-xs text-muted-foreground">
-                    {formatFileSize(file.size)}
-                    {file.size > 50 * 1024 * 1024 && (
+                    {formatFileSize(file.file.size)}
+                    {file.file.size > 50 * 1024 * 1024 && (
                       <span className="ml-2 text-amber-600">文件较大，处理可能需要更长时间</span>
                     )}
                   </p>
                 </div>
-                <Button variant="ghost" size="sm" onClick={() => removeFile(key)} aria-label={`删除 ${file.name}`}>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => removeFile(key as UploadFileType)}
+                  aria-label={`删除 ${file.file.name}`}
+                >
                   <X className="w-4 h-4" />
                 </Button>
               </div>

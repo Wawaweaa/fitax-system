@@ -1,0 +1,3 @@
+internal_sku,qty_sold,recv_customer,net_received
+TEST-SKU-001,1,100.00,90.00
+TEST-SKU-002,2,200.00,180.00

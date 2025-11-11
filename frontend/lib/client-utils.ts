@@ -4,6 +4,17 @@
  */
 import { v4 as uuidv4 } from 'uuid';
 
+/**
+ * 获取用户ID，用于API请求的x-user-id header
+ * 优先从环境变量获取，其次使用默认值
+ * @returns 用户ID
+ */
+export function getUserId(): string {
+  return typeof process !== 'undefined' && process.env?.NEXT_PUBLIC_DEV_USER_ID
+    ? process.env.NEXT_PUBLIC_DEV_USER_ID
+    : 'test-user-001';
+}
+
 // 生成唯一ID（可选前缀）
 export function generateId(prefix: string = ''): string {
   return `${prefix}${uuidv4()}`;

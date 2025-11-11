@@ -1,0 +1,55 @@
+[
+  {
+    "id": "job-1eff7868-4571-4035-9f2a-27b98da3fbf9",
+    "status": "pending",
+    "message": "等待处理",
+    "platform": "xiaohongshu",
+    "userId": "test-user-001",
+    "uploadId": "ULP-96f8f2aa-31f2-4d67-8a29-56f7d737b16f",
+    "datasetId": "dataset-e228809c",
+    "year": 2024,
+    "month": 8,
+    "createdAt": "2025-10-31T10:06:07.879Z",
+    "updatedAt": "2025-10-31T10:06:07.879Z",
+    "progress": 0,
+    "fileObjects": {
+      "settlement": "raw/user_id=test-user-001/platform=xiaohongshu/file_type=settlement/uploaded_at=2025-10-31T09:46:39.365Z/demo-小红书结算明细8月_样例_251026.xlsx",
+      "orders": "raw/user_id=test-user-001/platform=xiaohongshu/file_type=orders/uploaded_at=2025-10-31T09:46:39.367Z/demo-小红书订单明细8月_样例_251026.xlsx"
+    }
+  },
+  {
+    "id": "job-974d1061-22ae-44ad-8668-db5edf83b5b4",
+    "status": "failed",
+    "message": "未知错误",
+    "platform": "xiaohongshu",
+    "userId": "test-user-001",
+    "uploadId": "ULP-96f8f2aa-31f2-4d67-8a29-56f7d737b16f",
+    "datasetId": "dataset-e228809c",
+    "year": 2024,
+    "month": 8,
+    "createdAt": "2025-10-31T10:07:46.974Z",
+    "updatedAt": "2025-10-31T10:07:48.312Z",
+    "progress": 0,
+    "fileObjects": {
+      "settlement": "raw/user_id=test-user-001/platform=xiaohongshu/file_type=settlement/uploaded_at=2025-10-31T09:46:39.365Z/demo-小红书结算明细8月_样例_251026.xlsx",
+      "orders": "raw/user_id=test-user-001/platform=xiaohongshu/file_type=orders/uploaded_at=2025-10-31T09:46:39.367Z/demo-小红书订单明细8月_样例_251026.xlsx"
+    }
+  },
+  {
+    "id": "job-f2cc94c5-f9a6-4d71-a248-e895ca217851",
+    "status": "pending",
+    "message": "等待处理",
+    "platform": "wechat_video",
+    "userId": "test-user-001",
+    "uploadId": "ULP-54ec99ad-2edd-4f2c-b039-192636ee0635",
+    "datasetId": "dataset-ee15c1fb",
+    "year": 2024,
+    "month": 8,
+    "createdAt": "2025-10-31T11:56:23.273Z",
+    "updatedAt": "2025-10-31T11:56:23.273Z",
+    "progress": 0,
+    "fileObjects": {
+      "settlement": "raw/user_id=test-user-001/platform=wechat_video/file_type=settlement/uploaded_at=2025-10-31T11:55:50.660Z/wechat_video_sample.xlsx"
+    }
+  }
+]

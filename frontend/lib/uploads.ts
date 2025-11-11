@@ -279,7 +279,8 @@ export async function uploadFile(
   const contentHash = crypto.createHash('sha256').update(fileContent).digest('hex');
 
   // 提取文件类型
-  const fileType = path.extname(fileName).toLowerCase().slice(1);
+  const ext = path.extname(fileName).toLowerCase();
+  const fileType = ext === '.csv' ? 'settlement' : ext.replace(/^./, '');
 
   // 检查是否为重复文件
   const platform = path.extname(fileName).toLowerCase() === '.csv' ? 'wechat_video' : '';

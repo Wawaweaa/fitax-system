@@ -1,14 +1,16 @@
-import type { Platform } from "./types"
+import type { Platform, UploadFileType } from "./types"
+
+export interface RequiredFile {
+  key: UploadFileType
+  label: string
+  patterns: string[]
+}
 
 export interface PlatformConfig {
   value: Platform
   label: string
   description: string
-  requiredFiles: Array<{
-    key: string
-    label: string
-    patterns: string[]
-  }>
+  requiredFiles: RequiredFile[]
 }
 
 export const PLATFORM_CONFIGS: PlatformConfig[] = [
