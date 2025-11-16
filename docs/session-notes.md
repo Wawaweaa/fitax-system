@@ -36,6 +36,41 @@
 
 ---
 
+# Update — 前端表格与汇总卡片（UI/UX 收敛）
+
+- 时间（UTC）：2025-11-14 02:27:31Z
+- 范围：前端表头可读性与交互统一、列宽下限管理、汇总卡片信息密度与聚焦度提升；后端/worker/导出不变。
+
+## 表头交互与布局（统一实现）
+- 图标显隐：
+  - 未排序：默认隐藏（opacity-0）；
+  - 悬停 th：group-hover 半显（opacity-60，可调）；
+  - 已排序：常显（opacity-100）。
+- 绝对定位贴边：排序图标相对 th 右侧 `right-0` 吸附；th 收紧为 `px-0 pl-1`，避免右侧空白导致“看起来不贴边”。
+- 文本/图标解耦：图标不再放在 Button 内；Button 仅承载标题文本并保持居中，双行标题列（订单行数/订单序位/财务核算编码/销售数量/应收客户/应收平台）采用 `whitespace-normal + break-keep + leading-tight`。
+- 取消商家编码 sticky 与 hover：`internal_sku` 列去除了 sticky/left 背景与按钮 hover，视觉与交互回归一致。
+- 列宽下限（最小宽度）收敛：
+  - `month` 56px；`line_count/line_no` 42px；
+  - `order_id` 240px；`internal_sku` 120px；`fin_code` 80px；
+  - 数值列（`qty_sold/recv_platform/extra_charge/fee_platform_comm/fee_affiliate/fee_other/net_received`）统一 50px。
+
+## 汇总卡片（单行紧凑信息带）
+- 行级汇总（FactTotalsRow）：
+  - 由“上下两行（标题+数值）”改为“同一行并排”，使用 `flex items-center gap-2`；
+  - 数值统一使用 `tabular-nums`；净额高亮；整体使用 `grid` 自适应，多列展开但视觉紧凑。
+- 汇总视图（AggTotalsRow）：
+  - 同步为单行并排形式；一致性校验仍保留，但视觉降噪（字号收敛、行间距减少）。
+
+## 验证与可调参数
+- hover 强度可由 `opacity-60 → 70/80` 微调；
+- 图标贴边可由 `right-0 → right-0.5` 微调；
+- 列宽最小值可按列在 `TableHead className` 中直接调整；
+- 汇总卡片的指标顺序、字号/间距可快速再收敛（现已单行化）。
+
+## 不变边界
+- 未改动：`frontend/worker/**`、`frontend/lib/queue/**`、parquet 写入、`/api/export`、`/api/process` 入队逻辑。
+- 现有诊断日志仍保留：queue-debug / worker-debug / datasets-debug / preview-debug / export-debug。
+
 # Update — 微信视频号链路收尾（阶段进展）
 
 - 时间（UTC）：2025-11-09 03:20:00Z
@@ -121,3 +156,43 @@
 - 一旦确认元凶：
   - 若是旧 worker：停止并清理残留进程/队列；
   - 若是同步处理路径：移除该入口（统一通过队列 + worker）。
+
+---
+
+# Update — 前端预览稳定性与重复文件复用（不改后端链路）
+
+- 时间（UTC）：2025-11-12 02:41:09Z
+- 范围：仅前端页面逻辑与 /api/process 的重复分支返回值；不改队列/worker/处理/导出。
+
+## 已完成
+- 预览稳定性（方案A，纯前端）：
+  - 在「处理并预览」后前端轮询 `/api/preview`（每1.5s，最长30s），直到返回非空数据再更新预览；避免“导出正确但预览空”的窗口期。
+  - 轮询期间按钮禁用并显示“处理中…”，导出按钮仅在当前视图有数据时可点。
+- 重复文件复用（避免400）：
+  - `/api/process` 检测到已有 active dataset 时，改为 `200 { status: 'duplicate_reused', datasetId, jobId?, factCount, aggCount }`，并打印日志 `[process] duplicate upload reuse existing dataset {...}`。
+  - 前端将 duplicate_reused 视为成功，直接进入轮询预览流程；不再展示 400 错误。
+- UI 与表格表现：
+  - 导出按钮：文案统一为“导出 xlsx”、宽度与左侧按钮一致（144px）。
+  - “清空数据”按钮：宽度也对齐为 144px。
+  - 页面容器：支持调大 `max-w-*` 以减少留白。
+  - 行级表格（FactTable）：
+    - 去除行虚拟化（absolute + translateY），恢复原生表格布局，解决表头与内容错位。
+    - 第一列（商家编码）表头与内容均 sticky，对齐一致。
+    - 单元格内容统一水平居中；15个表头字号降一档（`text-xs`）。
+    - 表头文案与排序图标间距从 `ml-2` → `ml-1`（更紧凑）。
+
+## 验证
+- Run A/B：
+  - 清空 → 上传 → 处理并预览：预览稳定显示 27 行，导出 27 行且行号正确；
+  - 再次清空后重复上述流程：结果一致；
+  - 重复上传：被 `duplicate_reused` 复用处理，前端可直接预览与导出，无 400 错误。
+
+## 不变与风控边界
+- 未改动：`frontend/worker/**`、`frontend/lib/queue/**`、parquet 写入逻辑、`/api/export` 行为、`/api/process` 的 enqueue 新作业路径。
+- 仍保留：`queue-debug / worker-debug / datasets-debug / preview-debug / export-debug` 日志。
+
+## 后续可选优化（未实施）
+- 表头更紧凑：将图标间距进一步收紧为 `ml-0.5`，并替换排序图标为上下三角形 SVG（按单元格尺寸微调）。
+- 汇总表（AggTable）可同步表头字号与内容居中，风格一致。
+- 列宽控制：为各列添加统一宽度类或通过 `colgroup` 固定列宽。
+- duplicate_reused 友好提示：可加 info 级 toast（不阻塞流程）。

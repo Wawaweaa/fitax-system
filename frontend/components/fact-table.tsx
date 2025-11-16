@@ -573,14 +573,14 @@ export function FactTable({ data, platform }: FactTableProps) {
   return (
     <div className="rounded-md border overflow-auto" style={{ height: "610px" }}>
       <Table>
-        <TableHeader className="sticky top-0 bg-background z-10">
+        <TableHeader className="bg-background z-10">
           {table.getHeaderGroups().map((headerGroup) => (
             <TableRow key={headerGroup.id}>
               {headerGroup.headers.map((header) => (
                 <TableHead
                   key={header.id}
                   className={cn(
-                    "bg-muted/50 px-0 pl-1 group",
+                    "sticky top-0 z-20 bg-muted/50 px-0 pl-1 group",
                     header.column.id === "year" ? "min-w-[54px]" : "",
                     header.column.id === "month" ? "min-w-[54px]" : "",
                     (header.column.id === "line_count" || header.column.id === "line_no") ? "min-w-[56px]" : "",
@@ -641,7 +641,7 @@ export function FactTable({ data, platform }: FactTableProps) {
                   val = ''
               }
               return (
-                <TableHead key={`total-${id}`} className={cn('text-xs tabular-nums font-semibold italic', alignClass(id))}>
+                <TableHead key={`total-${id}`} className={cn('sticky top-8 z-20 text-xs tabular-nums font-semibold italic', alignClass(id))}>
                   {val}
                 </TableHead>
               )

@@ -296,6 +296,12 @@ export async function fetchFact(request: PreviewRequest): Promise<{ rows: FactRo
     url.searchParams.set('month', String(request.month));
     url.searchParams.set('view', 'fact');
 
+    // 为行级预览显式关闭分页：默认一次性取足够多的行，保证汇总与导出一致
+    const page = request.page ?? 1;
+    const pageSize = request.pageSize ?? 10000;
+    url.searchParams.set('page', String(page));
+    url.searchParams.set('pageSize', String(pageSize));
+
     if (request.sku) {
       url.searchParams.set('sku', request.sku);
     }
