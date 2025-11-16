@@ -31,39 +31,39 @@ export function FactTotalsRow({ data }: FactTotalsRowProps) {
   )
 
   return (
-    <Card className="p-4 bg-muted/30">
-      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-4 gap-4">
-        <div>
-          <p className="text-xs text-muted-foreground mb-1">合计：销售数量</p>
-          <p className="text-lg font-semibold">{formatNumber(totals.qty_sold)}</p>
+    <Card className="p-3 bg-muted/30">
+      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-3 items-center">
+        <div className="flex items-center gap-2">
+          <span className="text-xs text-muted-foreground">销售数量</span>
+          <span className="text-sm font-semibold tabular-nums">{formatNumber(totals.qty_sold)}</span>
         </div>
-        <div>
-          <p className="text-xs text-muted-foreground mb-1">应收客户</p>
-          <p className="text-lg font-semibold">{formatCurrency(totals.recv_customer)}</p>
+        <div className="flex items-center gap-2">
+          <span className="text-xs text-muted-foreground">应收客户</span>
+          <span className="text-sm font-semibold tabular-nums">{formatCurrency(totals.recv_customer)}</span>
         </div>
-        <div>
-          <p className="text-xs text-muted-foreground mb-1">应收平台</p>
-          <p className="text-lg font-semibold">{formatCurrency(totals.recv_platform)}</p>
+        <div className="flex items-center gap-2">
+          <span className="text-xs text-muted-foreground">应收平台</span>
+          <span className="text-sm font-semibold tabular-nums">{formatCurrency(totals.recv_platform)}</span>
         </div>
-        <div>
-          <p className="text-xs text-muted-foreground mb-1">价外收费</p>
-          <p className="text-lg font-semibold">{formatCurrency(totals.extra_charge)}</p>
+        <div className="flex items-center gap-2">
+          <span className="text-xs text-muted-foreground">收价外收费</span>
+          <span className="text-sm font-semibold tabular-nums">{formatCurrency(totals.extra_charge)}</span>
         </div>
-        <div>
-          <p className="text-xs text-muted-foreground mb-1">平台佣金</p>
-          <p className="text-lg font-semibold">{formatCurrency(totals.fee_platform_comm)}</p>
+        <div className="flex items-center gap-2">
+          <span className="text-xs text-muted-foreground">收平台佣金</span>
+          <span className="text-sm font-semibold tabular-nums">{formatCurrency(totals.fee_platform_comm)}</span>
         </div>
-        <div>
-          <p className="text-xs text-muted-foreground mb-1">分销佣金</p>
-          <p className="text-lg font-semibold">{formatCurrency(totals.fee_affiliate)}</p>
+        <div className="flex items-center gap-2">
+          <span className="text-xs text-muted-foreground">扣分销佣金</span>
+          <span className="text-sm font-semibold tabular-nums">{formatCurrency(totals.fee_affiliate)}</span>
         </div>
-        <div>
-          <p className="text-xs text-muted-foreground mb-1">其它费用</p>
-          <p className="text-lg font-semibold">{formatCurrency(totals.fee_other)}</p>
+        <div className="flex items-center gap-2">
+          <span className="text-xs text-muted-foreground">扣其它费用</span>
+          <span className="text-sm font-semibold tabular-nums">{formatCurrency(totals.fee_other)}</span>
         </div>
-        <div>
-          <p className="text-xs text-muted-foreground mb-1">应到账金额</p>
-          <p className="text-xl font-bold text-primary">{formatCurrency(totals.net_received)}</p>
+        <div className="flex items-center gap-2">
+          <span className="text-xs text-muted-foreground">应到账金额</span>
+          <span className="text-sm font-bold text-primary tabular-nums">{formatCurrency(totals.net_received)}</span>
         </div>
       </div>
     </Card>

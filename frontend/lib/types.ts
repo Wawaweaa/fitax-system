@@ -42,6 +42,7 @@ export interface FactRow {
 
 /**
  * 聚合表行（汇总数据 - 6列）
+ * 说明：文案统一为“明细数据/汇总数据”，其中本类型对应“汇总数据”。
  */
 export interface AggRow {
   platform?: string;             // 平台编码

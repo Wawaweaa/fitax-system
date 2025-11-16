@@ -25,31 +25,31 @@ export function AggTotalsRow({ data }: AggTotalsRowProps) {
   )
 
   return (
-    <Card className="p-6 border-none shadow-none">
-      <div className="grid grid-cols-2 md:grid-cols-6 gap-6">
-        <div>
-          <div className="text-sm text-muted-foreground mb-1">总销售数量</div>
-          <div className="text-2xl font-bold tabular-nums">{formatNumber(totals.qty_sold_sum)}</div>
+    <Card className="p-4 border-none shadow-none">
+      <div className="grid grid-cols-2 md:grid-cols-6 gap-4 items-center">
+        <div className="flex items-center gap-2">
+          <span className="text-xs text-muted-foreground">总销售数量</span>
+          <span className="text-base font-bold tabular-nums">{formatNumber(totals.qty_sold_sum)}</span>
         </div>
-        <div>
-          <div className="text-sm text-muted-foreground mb-1">总收入合计</div>
-          <div className="text-2xl font-bold tabular-nums">{formatCurrency(totals.income_total_sum)}</div>
+        <div className="flex items-center gap-2">
+          <span className="text-xs text-muted-foreground">总收入合计</span>
+          <span className="text-base font-bold tabular-nums">{formatCurrency(totals.income_total_sum)}</span>
         </div>
-        <div>
-          <div className="text-sm text-muted-foreground mb-1">总平台佣金</div>
-          <div className="text-2xl font-bold tabular-nums">{formatCurrency(totals.fee_platform_comm_sum)}</div>
+        <div className="flex items-center gap-2">
+          <span className="text-xs text-muted-foreground">总平台佣金</span>
+          <span className="text-base font-bold tabular-nums">{formatCurrency(totals.fee_platform_comm_sum)}</span>
         </div>
-        <div>
-          <div className="text-sm text-muted-foreground mb-1">总其他费用</div>
-          <div className="text-2xl font-bold tabular-nums">{formatCurrency(totals.fee_other_sum)}</div>
+        <div className="flex items-center gap-2">
+          <span className="text-xs text-muted-foreground">总其他费用</span>
+          <span className="text-base font-bold tabular-nums">{formatCurrency(totals.fee_other_sum)}</span>
         </div>
-        <div>
-          <div className="text-sm text-muted-foreground mb-1">总应到账金额</div>
-          <div className="text-2xl font-bold tabular-nums">{formatCurrency(totals.net_received_sum)}</div>
+        <div className="flex items-center gap-2">
+          <span className="text-xs text-muted-foreground">总应到账金额</span>
+          <span className="text-base font-bold tabular-nums">{formatCurrency(totals.net_received_sum)}</span>
         </div>
-        <div>
-          <div className="text-sm text-muted-foreground mb-1">一致性校验</div>
-          <div className="text-sm font-medium tabular-nums">
+        <div className="flex items-center gap-2">
+          <span className="text-xs text-muted-foreground">一致性校验</span>
+          <span className="text-xs font-medium tabular-nums">
             {Math.abs(
               totals.income_total_sum - totals.fee_platform_comm_sum - totals.fee_other_sum - totals.net_received_sum,
             ) < 0.01 ? (
@@ -63,7 +63,7 @@ export function AggTotalsRow({ data }: AggTotalsRowProps) {
                 )})
               </span>
             )}
-          </div>
+          </span>
         </div>
       </div>
     </Card>

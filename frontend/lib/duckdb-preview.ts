@@ -74,8 +74,8 @@ function buildConditions(
   }
 
   if (sku) {
-    conditions.push('t.internal_sku LIKE ?');
-    params.push(`%${sku}%`);
+    conditions.push('(t.internal_sku LIKE ? OR t.fin_code LIKE ? OR t.order_id LIKE ?)');
+    params.push(`%${sku}%`, `%${sku}%`, `%${sku}%`);
   }
 
   return { conditions, params };
@@ -142,7 +142,7 @@ export async function previewFactQueryForJobs(
   const params: any[] = [];
   if (userId) { clauses.push('t.user_id = ?'); params.push(userId); }
   if (platform) { clauses.push('t.platform = ?'); params.push(platform); }
-  if (sku) { clauses.push('t.internal_sku LIKE ?'); params.push(`%${sku}%`); }
+  if (sku) { clauses.push('(t.internal_sku LIKE ? OR t.fin_code LIKE ? OR t.order_id LIKE ?)'); params.push(`%${sku}%`, `%${sku}%`, `%${sku}%`); }
   const where = clauses.length ? `WHERE ${clauses.join(' AND ')}` : '';
 
   const sql = `

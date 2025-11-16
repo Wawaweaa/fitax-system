@@ -335,7 +335,7 @@ export default function UploadPage() {
 
   return (
     <div className="min-h-screen bg-background">
-      <div className="container max-w-4xl mx-auto px-4 py-12">
+      <div className="container max-w-8xl mx-auto px-4 py-12">
         <div className="mb-8">
           <h1 className="text-3xl font-bold mb-2 text-balance py-2">上午好啊</h1>
           <div className="py-1">
@@ -373,16 +373,16 @@ export default function UploadPage() {
               variant={showPreview ? "default" : "outline"}
               disabled={!showPreview || (view === 'row-level' ? factData.length === 0 : aggData.length === 0)}
               onClick={handleExport}
-              className="w-[180px] gap-2"
+              className="w-[144px] gap-2"
             >
               <Download className="h-4 w-4" />
-              导出 xlsx ({view === "row-level" ? "行级" : "汇总"})
+              导出 xlsx
             </Button>
             <Button
               variant={showPreview ? "destructive" : "outline"}
               disabled={clearing}
               onClick={handleClear}
-              className="w-[120px]"
+              className="w-[144px]"
             >
               {clearing ? '清空中...' : '清空数据'}
             </Button>
@@ -417,21 +417,7 @@ export default function UploadPage() {
 
               <div className="space-y-6">
                 <div className="flex flex-col gap-4">
-                  <ToggleGroup
-                    type="single"
-                    value={view}
-                    onValueChange={(v) => {
-                      if (v) setView(v as ViewType)
-                    }}
-                    className="self-start"
-                  >
-                    <ToggleGroupItem value="row-level" aria-label="行级视图">
-                      行级(A–O)
-                    </ToggleGroupItem>
-                    <ToggleGroupItem value="summary" aria-label="汇总视图">
-                      汇总(月×SKU)
-                    </ToggleGroupItem>
-                  </ToggleGroup>
+                  {/* 视图切换已移至 FilterBar 右侧，保持与筛选控件高度对齐 */}
 
                   <FilterBar
                     platform={platform!}
@@ -442,6 +428,8 @@ export default function UploadPage() {
                     onYearChange={setYear}
                     onMonthChange={setMonth}
                     onSkuChange={setSku}
+                    view={view}
+                    onViewChange={(v) => setView(v)}
                   />
                 </div>
 
@@ -455,7 +443,6 @@ export default function UploadPage() {
                       <EmptyState message="未找到符合条件的数据" />
                     ) : (
                       <>
-                        <FactTotalsRow data={factData} />
                         <FactTable data={factData} platform={platform!} />
                       </>
                     )
@@ -464,7 +451,6 @@ export default function UploadPage() {
                       <EmptyState message="未找到符合条件的数据" />
                     ) : (
                       <>
-                        <AggTotalsRow data={aggData} />
                         <AggTable data={aggData} />
                       </>
                     )
