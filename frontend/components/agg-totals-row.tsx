@@ -32,7 +32,7 @@ export function AggTotalsRow({ data }: AggTotalsRowProps) {
           <span className="text-base font-bold tabular-nums">{formatNumber(totals.qty_sold_sum)}</span>
         </div>
         <div className="flex items-center gap-2">
-          <span className="text-xs text-muted-foreground">总收入合计</span>
+          <span className="text-xs text-muted-foreground">总收入合计(含税)</span>
           <span className="text-base font-bold tabular-nums">{formatCurrency(totals.income_total_sum)}</span>
         </div>
         <div className="flex items-center gap-2">
@@ -40,7 +40,7 @@ export function AggTotalsRow({ data }: AggTotalsRowProps) {
           <span className="text-base font-bold tabular-nums">{formatCurrency(totals.fee_platform_comm_sum)}</span>
         </div>
         <div className="flex items-center gap-2">
-          <span className="text-xs text-muted-foreground">总其他费用</span>
+          <span className="text-xs text-muted-foreground">总其它费用</span>
           <span className="text-base font-bold tabular-nums">{formatCurrency(totals.fee_other_sum)}</span>
         </div>
         <div className="flex items-center gap-2">
