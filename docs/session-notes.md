@@ -196,3 +196,42 @@
 - 汇总表（AggTable）可同步表头字号与内容居中，风格一致。
 - 列宽控制：为各列添加统一宽度类或通过 `colgroup` 固定列宽。
 - duplicate_reused 友好提示：可加 info 级 toast（不阻塞流程）。
+
+---
+
+# Update — 微信视频号明细/汇总预览与UI收敛
+
+- 时间（北京时间）：2025-11-18 11:12:59
+- 范围：wechat_video 平台行级/汇总预览链路稳定性、前端明细/汇总视图 UI/交互统一，导出行为保持不变。
+
+## 行级预览与导出一致性（fact）
+- /api/preview?view=fact 使用 previewFactQuery + Parquet 有效视图，默认一次性返回全量行级数据（pageSize=10000），不再被隐式分页截断。
+- Upload 页面“处理并预览”流程：
+  - 处理成功后轮询行级预览，直到能读到有效行（满足样例 27 行）；
+  - ready 后将明细数据填充到 FactTable，并显式将视图切回“明细数据”，避免在 agg 视图尚未就绪时触发汇总预览请求。
+- 导出行级 XLSX 仍沿用 previewFactQuery + buildFactAoA，确认导出的行数、金额与行级预览完全一致。
+
+## 汇总预览稳定性（agg）
+- /api/preview?view=agg 使用 DuckDB Parquet 有效视图（agg_month_sku_effective），按商家编码 internal_sku 聚合，字段：销售数量、收入合计(含税)、扣平台佣金、扣其它费用(含分销佣金)、应到账金额。
+- 前端 fetchAgg：
+  - 显式传递 page/pageSize（默认 pageSize=10000），初次加载即可拿到全量聚合行；
+  - 移除所有 mock 回退逻辑，后端错误时直接抛出异常并在 UI 中通过 ErrorCard 呈现，不再生成随机 SKU 数据。
+- 首次预览后再次点击“汇总数据”时，AggTable 始终显示来自 agg Parquet 的真实聚合结果（以 7 月样例为基线做过验证）。
+
+## 明细/汇总视图 UI 对齐
+- 表头：
+  - AggTable 复用 FactTable 的表头布局：Button + SmallSortIcon，hover/排序显隐规则保持一致；
+  - 初始不排序，所有列排序箭头默认隐藏，仅在 hover 时半显；点击列头后该列箭头常显，其余列遵循与明细一致的透明度策略。
+- 表体：
+  - 汇总表体字体统一为 text-xs，数值列统一使用 tabular-nums，与明细表体视觉密度一致；
+  - 去除商家编码列的 sticky 行为，滚动体验与明细表保持一致；
+  - 调整 Card 与表格的内边距，使 FilterBar 与表格之间的垂直间距、表头与卡片顶部的距离与明细视图相匹配。
+- 汇总行：
+  - AggTable 表头下方保留一行 totals（销售数量、收入合计(含税)、扣平台佣金、扣其它费用、应到账金额），样式为 text-xs + tabular-nums + italic，与明细视图的汇总行规则一致；
+  - AggTotalsRow 卡片文案统一为“总销售数量/总收入合计(含税)/总平台佣金/总其它费用/总应到账金额”，与行级 TotalsRow 命名一致。
+
+## 不变/后续工作
+- 不变：后端 adapter、worker 聚合逻辑、DuckDB schema 以及导出行为均未改变，仅对预览/前端层做了稳定性和样式收敛。
+- 后续可选：
+  - 如需在汇总视图中单独展示“财务核算编码”与“扣分销佣金”列，需要在 agg_month_sku schema 中新增对应字段，并更新前端 AggRow/AggTable；
+  - 若汇总视图需要懒加载（滚动加载更多），可在当前“全量加载”基础上再引入轻量分页逻辑。

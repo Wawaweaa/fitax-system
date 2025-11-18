@@ -212,6 +212,12 @@ export async function fetchAgg(request: PreviewRequest): Promise<{ rows: AggRow[
     url.searchParams.set('month', String(request.month));
     url.searchParams.set('view', 'agg');
 
+    // 为汇总预览显式关闭分页：默认一次性取足够多的聚合行，保证汇总与导出一致
+    const page = request.page ?? 1;
+    const pageSize = request.pageSize ?? 10000;
+    url.searchParams.set('page', String(page));
+    url.searchParams.set('pageSize', String(pageSize));
+
     if (request.sku) {
       url.searchParams.set('sku', request.sku);
     }
@@ -234,54 +240,7 @@ export async function fetchAgg(request: PreviewRequest): Promise<{ rows: AggRow[
     return { rows };
   } catch (error) {
     console.error('获取聚合数据错误:', error);
-    // 回退到模拟数据
-    await delay(400 + Math.random() * 400);
-
-    const factRowCount = Math.floor(Math.random() * 200) + 100;
-    const factRows = Array.from({ length: factRowCount }, (_, i) =>
-      generateMockFactRow(i, request.platform, request.year, request.month),
-    );
-
-    // Filter by SKU if provided
-    const filteredRows = request.sku
-      ? factRows.filter((row) => row.internal_sku.toLowerCase().includes(request.sku!.toLowerCase()))
-      : factRows;
-
-    // Aggregate by internal_sku
-    const aggMap = new Map<string, AggRow>();
-
-    for (const row of filteredRows) {
-      const existing = aggMap.get(row.internal_sku);
-
-      if (existing) {
-        existing.qty_sold_sum += row.qty_sold;
-        existing.income_total_sum += row.recv_customer + row.recv_platform + row.extra_charge;
-        existing.fee_platform_comm_sum += row.fee_platform_comm;
-        existing.fee_other_sum += row.fee_affiliate + row.fee_other;
-        existing.net_received_sum += row.net_received;
-      } else {
-        aggMap.set(row.internal_sku, {
-          internal_sku: row.internal_sku,
-          qty_sold_sum: row.qty_sold,
-          income_total_sum: row.recv_customer + row.recv_platform + row.extra_charge,
-          fee_platform_comm_sum: row.fee_platform_comm,
-          fee_other_sum: row.fee_affiliate + row.fee_other,
-          net_received_sum: row.net_received,
-        });
-      }
-    }
-
-    // Convert to array and round values
-    const rows = Array.from(aggMap.values()).map((row) => ({
-      ...row,
-      qty_sold_sum: Math.round(row.qty_sold_sum),
-      income_total_sum: Number.parseFloat(row.income_total_sum.toFixed(2)),
-      fee_platform_comm_sum: Number.parseFloat(row.fee_platform_comm_sum.toFixed(2)),
-      fee_other_sum: Number.parseFloat(row.fee_other_sum.toFixed(2)),
-      net_received_sum: Number.parseFloat(row.net_received_sum.toFixed(2)),
-    }));
-
-    return { rows };
+    throw error instanceof Error ? error : new Error('获取聚合数据失败');
   }
 }
 

@@ -146,7 +146,8 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
     const year = url.searchParams.get('year');
     const month = url.searchParams.get('month');
     const sku = url.searchParams.get('sku') || undefined;
-    const view = (url.searchParams.get('view') || 'fact') as ViewType;
+    const viewParam = url.searchParams.get('view');
+    const view: ViewType = viewParam === 'agg' || viewParam === 'summary' ? 'agg' : 'fact';
     const page = parseInt(url.searchParams.get('page') || '1', 10);
     const pageSize = parseInt(url.searchParams.get('pageSize') || '50', 10);
 

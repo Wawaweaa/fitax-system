@@ -176,6 +176,8 @@ export default function UploadPage() {
 
     setProcessState("loading")
     setError(undefined)
+    // 处理开始即切回明细视图，避免在汇总视图尚未就绪时触发 agg 预览
+    setView("row-level")
 
     try {
       const formData = new FormData()
@@ -415,7 +417,7 @@ export default function UploadPage() {
             <>
               <div className="border-t" />
 
-              <div className="space-y-6">
+              <div className="space-y-4">
                 <div className="flex flex-col gap-4">
                   {/* 视图切换已移至 FilterBar 右侧，保持与筛选控件高度对齐 */}
 

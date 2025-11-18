@@ -114,7 +114,9 @@ async function safeAll<T>(db: Database, sql: string, params: any[]): Promise<T[]
 }
 async function safeGet<T>(db: Database, sql: string, params: any[]): Promise<T | null> {
   try {
-    return await db.get<T>(sql, ...params);
+    const rows = await db.all<T>(sql, ...params);
+    const row = Array.isArray(rows) && rows.length > 0 ? rows[0] : null;
+    return row ?? null;
   } catch (err: any) {
     const message = err?.message || '';
     if (message.includes('No files found that match the pattern')) {
