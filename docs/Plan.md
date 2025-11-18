@@ -1,41 +1,54 @@
-# 开发计划 / WBS
+# 开发计划 / WBS（P0 版）
 
 ## 里程碑
-- **M0**：staging-intl 全链路（上传→处理→预览→导出）上线 & 金样 E2E 通过。
-- **M1**：prod-cn 基础环境搭建（OSS/MNS/SAE/ApsaraDB）+ Worker shadow 验证。
-- **M2**：双写/灰度完成，DNS 切换，prod-cn 正式上线。
+- **M0：最小端到端链路**
+  - 完成 Storage/Queue 驱动（至少 `local + s3`、`inmemory + upstash/sqs`）。
+  - 实现 API upload/process/job/preview/export。
+  - Worker 可处理 merge/replace，写 Parquet 并更新有效视图。
+  - 三平台适配器完成 S0/S1（A–O + 汇总）。
+  - 行级/汇总视图前端联调，导出 CSV/XLSX。
+  - 金样 E2E 跑通，金样 diff=0。
+  - staging-intl 部署成功。
+- **M1：prod-cn 基础环境**
+  - OSS/MNS/SAE/ApsaraDB/SLS/CDN 资源准备与配置（含 ICP/证书）。
+  - Worker 容器在 prod-cn 环境运行（shadow）。
+  - 数据同步脚本（S3→OSS）验证。
+- **M2：双写与灰度上线**
+  - 双写（S3 + OSS）→ 指标一致。
+  - 灰度 10%→50%→100%，DNS 切换。
+  - 回滚预案演练。
 
-## 分阶段任务
-| 阶段 | 任务 | 输入 | 输出 | 负责人 | 验收标准 |
-| --- | --- | --- | --- | --- | --- |
-| M0 | 前端预览补完（A–O/汇总视图、URL 状态） | PRD | 完整预览页 | FE | 手测通过 |
-| M0 | Storage/Queue 抽象实现（S3/AliOSS, Redis/SQS/MNS） | 需求 G/H | `lib/storage.ts`, `lib/queue.ts` | BE | 单元测试覆盖 driver 切换 |
-| M0 | wechat_video adapter + Worker 端到端 | demo 视频号样本 | Parquet 产出 + 导出 | BE | 金样 diff=0 |
-| M0 | xhs adapter（双表 join、运费均分）、DuckDB schema | XHS 样本 | Parquet + agg | BE | diff=0，警告记录 |
-| M0 | douyin adapter（空白清洗、注释过滤） | 抖音样本 | Parquet + agg | BE | diff=0，ABF 无空白 |
-| M0 | 队列 Worker + Docker 镜像 | 队列抽象 | Worker 容器 | Infra | 任务可入队/出队；失败可重试 |
-| M0 | E2E 脚本（导出 CSV diff） | expected CSV | `npm run e2e:*` | QA | diff=0 |
-| M0 | staging-intl 部署脚本 | Env 配置 | Vercel + Worker | Infra | 部署成功，E2E 通过 |
-| M1 | prod-cn 资源创建（OSS/MNS/ApsaraDB/SLS/CDN、ICP） | 云账号 | 资源清单 | Infra | 基础资源可用 |
-| M1 | Worker shadow 任务（Ali driver） | 阿里云环境 | 日志报告 | BE | 队列消费成功，金样 diff=0 |
-| M2 | 双写/灰度 + 监控 | 两套 driver | 双写报告、监控面板 | Infra | 指标达标、SLO 满足 |
-| M2 | DNS 切换 & 回滚预案 | CDN/域名 | 切换 SOP | Infra | 切换成功，无重大告警 |
+## 任务拆解
+| 阶段 | 任务 | 输入 | 输出 | 负责人 | 验收 | 说明 |
+| --- | --- | --- | --- | --- | --- | --- |
+| M0 | Storage 抽象 (local/s3) | PRD/Architecture | `lib/storage` drivers | BE | 单测 | 支持上传/导出 | 
+| M0 | Queue 抽象 (inmemory + upstash/sqs) | 同上 | `lib/queue` drivers | BE | 单测 | 支持 reserve/ack/fail | 
+| M0 | API Upload/Process/Job | docs/API | `/api/*` route handlers | BE | API 单测 | 含 content_hash、mode | 
+| M0 | Worker merge/replace | docs/PRD | `worker/index.ts` | BE | 作业状态日志 | 包含 row_key/row_hash | 
+| M0 | Adapter wechat_video | 样本/附件 | `adapters/wechat_video.ts` | BE | 金样 diff | S0/S1 逻辑 | 
+| M0 | Adapter xiaohongshu | 样本 | `adapters/xiaohongshu.ts` | BE | 金样 diff | 处理跨表/运费 | 
+| M0 | Adapter douyin | 样本 | `adapters/douyin.ts` | BE | 金样 diff | 去空白/注释 | 
+| M0 | 有效视图 & Parquet | Architecture | `lib/parquet` etc. | BE | 预览/导出通过 | fact/agg + effective | 
+| M0 | 前端视图 & 导出 | PRD | 更新 page.tsx/components | FE | 手测通过 | 行级/汇总/导出 | 
+| M0 | 金样 E2E | E2E 规范 | `tests/e2e` | QA | Vitest 通过 | diff=0 + 恒等式 | 
+| M0 | 部署脚本 (staging) | 部署蓝图 | README/脚本 | Infra | 样本跑通 | Vercel + S3 + Queue + Worker | 
+| M1 | prod-cn 资源部署 | 阿里云规划 | Terraform/手册 | Infra | 资源可用 | OSS/MNS/SAE 等 | 
+| M1 | Worker shadow | 样本 | 日志报告 | BE | 金样 diff=0 | ali-oss/mns 驱动 | 
+| M2 | 双写/灰度 | 部署计划 | 报告 | Infra | 指标通过 | 双写校验 + DNS | 
 
-## 具体执行规划
-1. 整合前端视图变化；更新 README 与文档。
-2. 实现 Storage/Queue 抽象（S3/AliOSS、Redis/SQS/MNS）及配置管理。
-3. 实现 Worker 架构（Dockerfile、队列消费、Parquet 生成、签名导出）。
-4. 完成 wechat/xhs/douyin adapter 与 DuckDB/Parquet 输出。
-5. 编写单元/集成/E2E 测试（含金样 diff）。
-6. 部署 staging-intl：Vercel + Fly/Render Worker；配置 S3/Queue/ENV。
-7. 监控/日志接入（Sentry、Logtail/Datadog）。
-8. 构建 prod-cn 环境（OSS/MNS/SAE/ApsaraDB），执行 shadow 验证。
-9. 同步数据 S3→OSS，开启双写，灰度切流。
-10. 完成 DNS 切换和回滚预案，发布报告。
+## 执行顺序建议
+1. 抽象 Storage/Queue & 配置管理 → 先实现 local/inmemory。
+2. 搭建 upload/process/job 基础 API。
+3. Worker 流程（merge/replace）与 metadata 管理。
+4. 平台适配器（wechat → xhs → douyin），同时实现 Parquet 写入/有效视图。
+5. 导出 API（CSV inline + XLSX 签名链接）。
+6. 前端视图联调（行级/汇总、URL 同步、导出按钮）。
+7. 金样 E2E：fixtures + expected + Vitest；修复差异。
+8. 部署 staging-intl：Vercel + S3 + Queue + Worker。
+9. 准备 prod-cn 资源 & shadow → M2 双写/灰度。
 
 ## 输出文档
-- `/docs/Plan.md`（本文件）
-- `/docs/QA.md`（验收清单）
-- `/docs/OpenIssues.md`（待决问题）
-- `/docs/DevTestTemplate.md`（执行指令）
+- `/docs/PRD.md`、`/docs/Architecture.md`、`/docs/API.md`、`/docs/Plan.md`。
+- `/docs/QA.md`（验收标准）、`/docs/DevTestTemplate.md`（执行指令）、`/docs/OpenIssues.md` 更新。
+- README 部署说明、环境变量示例 `.env.example`。
 

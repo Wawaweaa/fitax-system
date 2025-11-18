@@ -102,10 +102,10 @@ export default function PreviewPage() {
             }}
           >
             <ToggleGroupItem value="row-level" aria-label="行级视图">
-              行级(A–O)
+              明细数据
             </ToggleGroupItem>
             <ToggleGroupItem value="summary" aria-label="汇总视图">
-              汇总(月×SKU)
+              汇总数据
             </ToggleGroupItem>
           </ToggleGroup>
 

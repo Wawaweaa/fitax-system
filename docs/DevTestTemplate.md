@@ -1,59 +1,79 @@
-# Dev + Test 指令模板
+# Dev + Test 指令模板（P0）
 
 ## 环境准备
 ```
-pm install
+npm install
 mkdir -p data uploads expected tmp
 cp .env.example .env
 ```
-- 填写 `.env`：`MAX_UPLOAD_MB=50`，`ALLOWED_EXT=.xlsx`，`STORAGE_DRIVER=s3或ali-oss`，`QUEUE_DRIVER=upstash|sqs|mns` 等。
+- `.env` 必填：`APP_BASE_URL`, `STORAGE_DRIVER`, `QUEUE_DRIVER`, `MAX_UPLOAD_MB`, `ALLOWED_EXT`, `SIGN_URL_TTL_SEC`。
+- 开发用：`STORAGE_DRIVER=local`（./uploads），`QUEUE_DRIVER=inmemory`。
 
-## Storage/Queue 驱动
-- 开发期可用 `StorageStub`（写本地）、`QueueStub`（内存）模拟。
-- 真机测试需要配置 AWS/阿里云凭证。
+## 运行脚本建议
+```
+"scripts": {
+  "dev:web": "next dev -p 3000",
+  "dev:worker": "ts-node worker/index.ts",
+  "dev": "run-p dev:web dev:worker",
+  "test": "vitest run",
+  "e2e": "vitest run -c tests/e2e/vitest.config.ts",
+  "e2e:all": "run-p dev:web dev:worker \"wait-on http://localhost:3000 && npm run e2e\""
+}
+```
+- 依赖：`npm i -D ts-node vitest wait-on npm-run-all`
+
+## 开发步骤
+1. 实现 Storage drivers（local/s3），Queue drivers（inmemory + upstash/sqs）。
+2. 编写 Upload/Process/Job/Preview/Export API route handler。
+3. 完成 Worker（merge/replace + Parquet 写入 + 有效视图更新）。
+4. 实现平台适配器（wechat/xhs/douyin）逻辑。
+5. 更新前端视图、导出按钮、状态显示。
+6. 编写单元测试（Storage/Queue、merge/replace、适配器、金额守恒）。
+7. 准备 fixtures (`fixtures/<platform>/...`)、expected CSV、E2E 脚本。
+8. 运行 `npm run e2e:all`，确保金样 diff=0。
+
+## E2E 目录结构
+```
+fixtures/
+  xiaohongshu/{settlement.xlsx, orders.xlsx}
+  douyin/{settlement.xlsx, orders.xlsx}
+  wechat_video/{settlement.xlsx}
+expected/
+  xiaohongshu/{expected_fact.csv, expected_agg.csv}
+  ...
+tests/e2e/
+  e2e.spec.ts
+  helpers.ts
+  vitest.config.ts
+tmp/
+  <platform>/actual_fact.csv
+```
+
+## E2E 环境
+```
+APP_BASE_URL=http://localhost:3000
+E2E_YEAR=2025
+E2E_MONTH=8
+E2E_MODE=merge
+```
+
+## E2E 断言
+- 上传 → 处理 → 导出（CSV inline）→ 金样字节级对比。
+- 汇总恒等式校验。
+- 导出列顺序/格式正确。
+
+## 部署步骤（staging-intl）
+1. 配置 Vercel 环境变量（Storage= S3，Queue=Upstash/SQS，App URL）。
+2. 构建 Worker Docker 镜像，部署至 Fly/Render。
+3. 在 staging 执行 E2E（金样 diff=0）。
+4. 编写 README/Playbook，记录上传样本/触发处理/监控。
 
 ## 常用命令
 ```
-npm run dev
-npm run build
-npm run lint
+npm run dev:web
+npm run dev:worker
 npm run test
-npm run e2e -- --platform wechat_video --input uploads/samples/demo-1024-视频号模型_规则样例_251026.xlsx
+npm run e2e
+npm run e2e:all
 ```
-- 其他平台：`npm run e2e:xhs`、`npm run e2e:douyin`（自行配置）。
 
-## 阶段性测试
-1. **单元测试**：
-   - Storage/Queue driver 切换。
-   - Douyin 字段清洗（空白/注释）。
-   - 视频号 H/I/J/L/M/N 条件。
-2. **集成测试**：
-   - dev-local：上传→处理→预览→导出全流程。
-   - Worker：模拟队列任务，确认 Parquet/导出生成。
-3. **E2E**：
-   - 运行 `npm run e2e:*`。
-   - 导出 `fact.csv`、`agg.csv` 至 `tmp/<platform>/`。
-   - 与 `expected/expected_fact.csv`, `expected/expected_agg.csv` `diff`。
-
-## 部署验证
-- staging-intl：
-  1. 配置 `.env.staging`（S3、Queue、Postgres）。
-  2. CI 部署 Vercel + Worker。
-  3. 运行 `npm run e2e:staging`（远程执行）。
-- prod-cn：
-  1. 配置 `.env.prod`（OSS、MNS、ApsaraDB、SLS）。
-  2. 运行 shadow 任务验证。
-  3. 双写期间记录核对报告。
-
-## 运维脚本
-- `scripts/sync-parquet.ts`：S3 ↔ OSS 同步。
-- `scripts/check-metrics.ts`：拉取监控指标。
-- `scripts/cleanup-exports.ts`：清理过期导出。
-
-## 通过标准
-- 金样对比 `diff` = 0。
-- API 响应符合 PRD。
-- Storage/Queue driver 可自由切换。
-- Worker 处理成功率 ≥99%，失败可重试。
-- Parquet 目录结构正确。
-- 部署后监控指标在阈值内。

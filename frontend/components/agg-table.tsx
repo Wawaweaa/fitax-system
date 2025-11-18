@@ -77,6 +77,25 @@ export function AggTable({ data }: AggTableProps) {
                 <SortIcon field="net_received_sum" />
               </TableHead>
             </TableRow>
+            {/* 汇总行（聚合视图） */}
+            <TableRow className="bg-muted/30">
+              <TableHead className="sticky left-0 bg-muted/30" />
+              <TableHead className="text-right text-xs tabular-nums font-semibold italic">
+                {formatNumber(data.reduce((s, r) => s + (r.qty_sold_sum || 0), 0))}
+              </TableHead>
+              <TableHead className="text-right text-xs tabular-nums font-semibold italic">
+                {formatCurrency(data.reduce((s, r) => s + (r.income_total_sum || 0), 0))}
+              </TableHead>
+              <TableHead className="text-right text-xs tabular-nums font-semibold italic">
+                {formatCurrency(data.reduce((s, r) => s + (r.fee_platform_comm_sum || 0), 0))}
+              </TableHead>
+              <TableHead className="text-right text-xs tabular-nums font-semibold italic">
+                {formatCurrency(data.reduce((s, r) => s + (r.fee_other_sum || 0), 0))}
+              </TableHead>
+              <TableHead className="text-right text-xs tabular-nums font-semibold italic">
+                {formatCurrency(data.reduce((s, r) => s + (r.net_received_sum || 0), 0))}
+              </TableHead>
+            </TableRow>
           </TableHeader>
           <TableBody>
             {sortedData.map((row, index) => (

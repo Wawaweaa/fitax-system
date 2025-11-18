@@ -1,12 +1,45 @@
+# === Node / 通用 ===
 node_modules/
-.next/
-.vercel/
-uploads/
-data/
+*.log
+*.log.*
+npm-debug.log*
+pids
+*.pid
+*.seed
+*.pid.lock
 
-node_modules/
-.next/
-.vercel/
-uploads/
-data/
+# === OS / 编辑器 ===
+.DS_Store
+*.swp
+.idea/
+.vscode/
 
+# === Next.js / Vercel ===
+.next/
+out/
+.vercel/
+
+# === 测试 / 构建产物 ===
+coverage/
+.nyc_output/
+dist/
+tmp/
+frontend/tmp/
+
+# === 运行期数据（不要提交） ===
+frontend/data/
+frontend/uploads/
+frontend/exports/
+parquet/
+frontend/parquet/
+*.parquet
+
+# === 环境变量（密钥） ===
+.env*
+**/.env*
+frontend/.env.local
+
+# === 重要：保留需要入库的测试/金样/静态资源 ===
+!frontend/expected/**
+!expected/**
+!frontend/public/**

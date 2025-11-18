@@ -1,0 +1,8 @@
+{
+  "devDependencies": {
+    "vitest": "^4.0.5"
+  },
+  "dependencies": {
+    "ali-oss": "^6.23.0"
+  }
+}
