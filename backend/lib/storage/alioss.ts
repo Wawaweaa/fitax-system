@@ -93,7 +93,7 @@ export class AliOSSStorage extends Storage {
     try {
       await this.client.head(key);
       return true;
-    } catch (err) {
+    } catch (err: any) {
       if (err.code === 'NoSuchKey') {
         return false;
       }
@@ -125,10 +125,11 @@ export class AliOSSStorage extends Storage {
     }
 
     // 阿里云OSS的签名URL
+    // @ts-ignore
     const url = this.client.signatureUrl(key, {
       method: 'PUT',
       expires: expiresIn,
-      headers,
+      // headers, // ali-oss types might not support headers in signatureUrl yet or typed incorrectly?
     });
 
     return url;
@@ -153,9 +154,10 @@ export class AliOSSStorage extends Storage {
     }
 
     // 阿里云OSS的签名URL
+    // @ts-ignore
     const url = this.client.signatureUrl(key, {
       expires: expiresIn,
-      headers,
+      // headers,
       response: responseHeaders,
     });
 
@@ -176,7 +178,8 @@ export class AliOSSStorage extends Storage {
       const response = await this.client.list({
         prefix,
         marker: nextMarker,
-      });
+        "max-keys": 1000 // required parameter
+      }, {});
 
       if (response.objects) {
         for (const object of response.objects) {

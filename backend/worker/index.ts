@@ -154,6 +154,14 @@ async function processUploadJob(
       jobId
     });
 
+    console.log('[worker-debug] adapter result', {
+      jobId,
+      platform,
+      factCount: processResult.factRows?.length,
+      aggCount: processResult.aggRows?.length,
+      warningsCount: processResult.warnings?.length,
+    });
+
     // 记录警告信息
     if (processResult.warnings.length > 0) {
       await updateJobStatus(

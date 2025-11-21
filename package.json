@@ -1,6 +1,9 @@
 {
   "devDependencies": {
-    "vitest": "^4.0.5"
+    "@aws-sdk/client-s3": "^3.934.0",
+    "@aws-sdk/s3-request-presigner": "^3.934.0",
+    "vitest": "^4.0.5",
+    "xlsx": "^0.18.5"
   },
   "dependencies": {
     "ali-oss": "^6.23.0"

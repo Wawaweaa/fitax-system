@@ -117,6 +117,9 @@ export async function processData(
     }
   );
 
+  // Add debug log to verify zero rows hypothesis
+  // console.log('[worker-debug] parsedData', { ... });
+
   // 更新作业状态
   await updateJob(context.jobId, {
     progress: 60,

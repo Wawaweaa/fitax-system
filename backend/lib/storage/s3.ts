@@ -11,7 +11,9 @@ import {
   HeadObjectCommand,
   ListObjectsV2Command,
   NotFound,
-  S3ClientConfig
+  S3ClientConfig,
+  PutObjectCommandInput,
+  GetObjectCommandInput
 } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { Storage, PutOptions, SignedUrlOptions } from './base';
@@ -58,7 +60,7 @@ export class S3Storage extends Storage {
    * @param opts 上传选项
    */
   async putObject(key: string, body: Buffer | Readable, opts?: PutOptions): Promise<void> {
-    const command = new PutObjectCommand({
+    const command: PutObjectCommand = new PutObjectCommand({
       Bucket: this.bucket,
       Key: key,
       Body: body,
@@ -75,7 +77,7 @@ export class S3Storage extends Storage {
    * @returns 对象内容
    */
   async getObject(key: string): Promise<Buffer> {
-    const command = new GetObjectCommand({
+    const command: GetObjectCommand = new GetObjectCommand({
       Bucket: this.bucket,
       Key: key,
     });
@@ -180,7 +182,7 @@ export class S3Storage extends Storage {
     let continuationToken: string | undefined = undefined;
 
     do {
-      const command = new ListObjectsV2Command({
+      const command: ListObjectsV2Command = new ListObjectsV2Command({
         Bucket: this.bucket,
         Prefix: prefix,
         ContinuationToken: continuationToken,

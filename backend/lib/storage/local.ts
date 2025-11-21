@@ -59,7 +59,9 @@ export class LocalStorage extends Storage {
       await fs.writeFile(fullPath, body);
     } else {
       // 如果是流，使用pipeline写入文件
-      const writeStream = fs.createWriteStream(fullPath);
+      // Use standard fs for createWriteStream as fs/promises doesn't have it
+      const fsStandard = require('fs');
+      const writeStream = fsStandard.createWriteStream(fullPath);
       await streamPipeline(body, writeStream);
     }
   }
@@ -113,7 +115,7 @@ export class LocalStorage extends Storage {
    */
   async getPresignedUploadUrl(key: string, opts?: SignedUrlOptions): Promise<string> {
     // 在本地实现中，返回null，因为本地不支持预签名URL
-    return null;
+    return '';
   }
 
   /**

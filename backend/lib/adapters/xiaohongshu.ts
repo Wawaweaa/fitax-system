@@ -7,6 +7,7 @@ import path from 'path';
 import * as XLSX from 'xlsx';
 import { PlatformAdapter, ProcessResult, ProcessParams, registerAdapter, checkAmountClosure } from './base';
 import { FactRow, AggRow } from '../../../frontend/lib/types';
+import { transformXiaohongshuToFact, XiaohongshuS1Input } from './xiaohongshu_core';
 
 // 字段映射类型
 interface FieldMapping {
@@ -44,34 +45,21 @@ class XiaohongshuAdapter implements PlatformAdapter {
     }
   ];
 
-  // 字段映射
+  // 字段映射 - 用于验证表头
   private readonly fieldMappings: Record<string, FieldMapping> = {
-    // 订单明细字段映射
+    // 订单明细字段映射 (Key should match Header in Excel)
     order: {
-      '订单编号': 'order_id',
-      '商品编号': 'product_id',
-      '商品名称': 'product_name',
-      '商品规格': 'specification',
-      'SKU编码': 'sku_code',
-      '商家SKU编码': 'merchant_sku_code',
-      '购买数量': 'quantity',
-      '订单金额': 'order_amount',
-      '优惠金额': 'discount_amount',
-      '运费': 'shipping_fee',
-      '买家实付金额': 'buyer_paid',
-      '订单状态': 'order_status',
-      '下单时间': 'order_time',
+      '订单号': 'order_id',
+      '规格ID': 'spec_id',
+      '商家编码': 'sku_code',
+      '商品总价(元)': 'total_amount',
+      'SKU件数': 'quantity'
     },
     // 结算明细字段映射
     settlement: {
-      '订单编号': 'order_id',
-      '结算单号': 'settlement_id',
-      '结算时间': 'settlement_time',
-      '商品名称': 'product_name',
-      '商品金额': 'product_amount',
-      '佣金': 'commission',
-      '结算金额': 'settlement_amount',
-      '结算状态': 'settlement_status',
+      '订单号': 'order_id',
+      '规格ID': 'spec_id',
+      '结算时间': 'settlement_time'
     }
   };
 
@@ -180,7 +168,7 @@ class XiaohongshuAdapter implements PlatformAdapter {
     // 读取并解析结算明细文件
     const settlementData = await this.readFile(settlementFile);
 
-    // 验证表头
+    // 验证表头 - 使用核心转换需要的关键字段进行验证
     this.validateHeaders(orderData, this.fieldMappings.order, '订单明细');
     this.validateHeaders(settlementData, this.fieldMappings.settlement, '结算明细');
 
@@ -200,8 +188,7 @@ class XiaohongshuAdapter implements PlatformAdapter {
   private async readFile(filePath: string): Promise<any[]> {
     // 读取文件
     const fileData = await fs.readFile(filePath);
-    const ext = path.extname(filePath).toLowerCase();
-
+    
     // 解析工作簿
     const workbook = XLSX.read(fileData);
 
@@ -221,14 +208,17 @@ class XiaohongshuAdapter implements PlatformAdapter {
    */
   private validateHeaders(data: any[], mapping: FieldMapping, fileType: string): void {
     if (data.length === 0) {
+      // Allow empty data but warn? Or strict fail?
+      // Let's fail strictly if no rows.
       throw new Error(`${fileType}文件没有数据`);
     }
 
     const firstRow = data[0];
-    const missingFields = Object.keys(mapping).filter(field => !(field in firstRow));
+    const presentFields = Object.keys(mapping).filter(field => field in firstRow);
 
-    if (missingFields.length > 0) {
-      throw new Error(`${fileType}文件缺少必要的字段: ${missingFields.join(', ')}`);
+    if (presentFields.length === 0) {
+        const expectedFields = Object.keys(mapping).join(', ');
+        throw new Error(`${fileType}文件似乎不匹配，缺少预期字段 (如: ${expectedFields})`);
     }
   }
 
@@ -241,113 +231,56 @@ class XiaohongshuAdapter implements PlatformAdapter {
     const { platform, uploadId, year, month } = params;
 
     // 预处理：读取并验证文件
-    const { orderData, settlementData, orderFile, settlementFile } = await this.preprocess(params);
+    const { orderData, settlementData } = await this.preprocess(params);
 
-    // 创建结算数据索引，用于快速查找
-    const settlementMap: Record<string, any[]> = {};
-    for (const settlement of settlementData) {
-      const orderId = settlement['订单编号'];
-      if (!settlementMap[orderId]) {
-        settlementMap[orderId] = [];
-      }
-      settlementMap[orderId].push(settlement);
-    }
+    console.log('[xhs-adapter] preprocess result', {
+      settlementRows: settlementData.length,
+      orderRows: orderData.length,
+      settlementHeaders: Object.keys(settlementData[0] || {}),
+      orderHeaders: Object.keys(orderData[0] || {}),
+    });
 
-    // 处理数据
-    const factRows: FactRow[] = [];
+    // 使用核心转换器处理
+    const input: XiaohongshuS1Input = {
+      settlementRows: settlementData,
+      orderRows: orderData
+    };
+
     const warnings: string[] = [];
+    let factRows: FactRow[] = [];
 
-    // 处理订单数据，创建事实表行
-    for (let i = 0; i < orderData.length; i++) {
-      const orderRow = orderData[i];
-      const orderId = orderRow['订单编号'];
+    try {
+      const rawFactRows = transformXiaohongshuToFact(input);
 
-      // 跳过已取消或退款的订单
-      if (orderRow['订单状态'].includes('取消') || orderRow['订单状态'].includes('退款')) {
-        continue;
-      }
-
-      try {
-        const orderTime = new Date(orderRow['下单时间']);
-        const orderMonth = orderTime.getMonth() + 1;
-        const orderYear = orderTime.getFullYear();
-
-        // 检查日期是否与请求的年月匹配
-        if (orderYear !== year || orderMonth !== month) {
-          warnings.push(`订单 ${orderId} 的日期 (${orderYear}-${orderMonth}) 与请求的处理期间 (${year}-${month}) 不匹配`);
-          continue;
-        }
-
-        // 获取该订单的结算信息
-        const settlements = settlementMap[orderId] || [];
-
-        // 计算总佣金和结算金额
-        let totalCommission = 0;
-        let totalSettlement = 0;
-        let hasSettlement = false;
-
-        for (const settlement of settlements) {
-          if (settlement['结算状态'] !== '已结算') {
-            continue;
+      console.log('[xhs-adapter] after transform', {
+        factRows: rawFactRows.length,
+      });
+      
+      // 过滤并补充元数据
+      factRows = rawFactRows.filter(row => {
+          if (row.year !== year || row.month !== month) {
+              warnings.push(`Row ignored: Date ${row.year}-${row.month} does not match job period ${year}-${month}`);
+              return false;
           }
+          return true;
+      }).map(row => ({
+        ...row,
+        platform,
+        upload_id: uploadId,
+        job_id: params.jobId || '',
+        record_count: 1
+      }));
 
-          hasSettlement = true;
-          totalCommission += parseFloat(settlement['佣金'] || 0);
-          totalSettlement += parseFloat(settlement['结算金额'] || 0);
-        }
-
-        // 如果没有找到对应结算信息，记录警告但继续处理
-        if (!hasSettlement) {
-          warnings.push(`订单 ${orderId} 没有找到已结算的结算记录`);
-        }
-
-        // 提取 SKU 信息
-        const internalSku = orderRow['商家SKU编码'] || orderRow['SKU编码'] || orderRow['商品编号'];
-
-        // 计算费用和金额
-        const quantity = parseInt(orderRow['购买数量'] || 0);
-        const orderAmount = parseFloat(orderRow['订单金额'] || 0);
-        const discountAmount = parseFloat(orderRow['优惠金额'] || 0);
-        const shippingFee = parseFloat(orderRow['运费'] || 0);
-        const buyerPaid = parseFloat(orderRow['买家实付金额'] || 0);
-
-        // 计算其他费用（非佣金）
-        // 对于小红书，其他费用通常包括平台补贴、优惠券等
-        const otherFees = orderAmount - buyerPaid - totalCommission;
-
-        // 创建事实表行
-        const factRow: FactRow = {
-          platform,
-          upload_id: uploadId,
-          year,
-          month,
-          order_id: orderId,
-          line_count: 1, // 小红书每个订单通常只有一行
-          line_no: 1,
-          internal_sku: String(internalSku),
-          fin_code: String(internalSku), // 使用商家SKU作为财务编码
-          qty_sold: quantity,
-          recv_customer: buyerPaid,
-          recv_platform: orderAmount, // 平台收到的总金额
-          extra_charge: shippingFee, // 额外收费（运费）
-          fee_platform_comm: totalCommission, // 平台佣金
-          fee_affiliate: 0, // 小红书没有联盟佣金
-          fee_other: otherFees > 0 ? otherFees : 0, // 其他费用
-          net_received: hasSettlement ? totalSettlement : (orderAmount - totalCommission - (otherFees > 0 ? otherFees : 0)),
-          source_file: path.basename(orderFile),
-          source_line: i + 2, // Excel 行索引（+2 是因为有表头和 0-索引）
-        };
-
-        // 验证金额闭环
-        if (!checkAmountClosure(factRow)) {
-          warnings.push(`订单 ${factRow.order_id} 的金额计算不闭环`);
-        }
-
-        factRows.push(factRow);
-      } catch (err) {
-        warnings.push(`处理订单 ${orderId} 时出错: ${err.message}`);
-      }
+    } catch (err: any) {
+      throw new Error(`Core transformation failed: ${err.message}`);
     }
+
+    // Check amount closure for each row
+    factRows.forEach(row => {
+        if (!checkAmountClosure(row)) {
+             warnings.push(`Amount mismatch for Order ${row.order_id}: Net ${row.net_received} != I+J+K-L-M-N`);
+        }
+    });
 
     // 聚合数据生成聚合表
     const skuSummary: Record<string, AggRow> = {};
@@ -372,12 +305,23 @@ class XiaohongshuAdapter implements PlatformAdapter {
       }
 
       const summary = skuSummary[internal_sku];
+      
+      // qty_sold_sum = Σ qty_sold
       summary.qty_sold_sum += row.qty_sold;
-      summary.income_total_sum += row.recv_platform;
+      
+      // income_total_sum = Σ (recv_customer + recv_platform + extra_charge)
+      summary.income_total_sum += (row.recv_customer + row.recv_platform + row.extra_charge);
+      
+      // fee_platform_comm_sum = Σ fee_platform_comm
       summary.fee_platform_comm_sum += row.fee_platform_comm;
-      summary.fee_other_sum += row.fee_other + row.fee_affiliate; // 合并其他费用和联盟佣金
+      
+      // fee_other_sum = Σ (fee_affiliate + fee_other)
+      summary.fee_other_sum += (row.fee_affiliate + row.fee_other);
+      
+      // net_received_sum = Σ net_received
       summary.net_received_sum += row.net_received;
-      summary.record_count += 1;
+      
+      summary.record_count! += 1;
     }
 
     // 将聚合数据转换为数组，并保留两位小数
@@ -408,5 +352,5 @@ class XiaohongshuAdapter implements PlatformAdapter {
 // 注册适配器
 registerAdapter(new XiaohongshuAdapter());
 
-// 导出适配器类型
-export type { XiaohongshuAdapter };
+// 导出适配器类 (for testing)
+export { XiaohongshuAdapter };

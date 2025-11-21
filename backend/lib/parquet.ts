@@ -3,13 +3,11 @@
  */
 import fs from 'fs/promises';
 import path from 'path';
-import { execFile } from 'child_process';
-import { promisify } from 'util';
 import { FactRow, AggRow } from '../../frontend/lib/types';
 import { storage } from './storage';
 import { generateId, ensureDir } from './utils';
 
-const execFileAsync = promisify(execFile);
+import { Database } from 'duckdb-async';
 
 /**
  * 将数据写入 JSON 文件
@@ -20,6 +18,9 @@ async function writeJsonFile(data: any[], filePath: string): Promise<void> {
   await fs.writeFile(filePath, JSON.stringify(data, null, 2));
 }
 
+
+import { Database } from 'duckdb-async';
+
 /**
  * 使用 DuckDB 将 JSON 转换为 Parquet
  * @param jsonPath JSON 文件路径
@@ -27,6 +28,8 @@ async function writeJsonFile(data: any[], filePath: string): Promise<void> {
  * @param schema 表结构（可选）
  */
 async function convertJsonToParquet(jsonPath: string, parquetPath: string, schema?: string): Promise<void> {
+  const db = await Database.create(':memory:');
+  
   // 构建 SQL 查询
   let sql: string;
 
@@ -35,7 +38,6 @@ async function convertJsonToParquet(jsonPath: string, parquetPath: string, schem
     sql = `
       CREATE TABLE temp AS SELECT * FROM read_json('${jsonPath}', schema='${schema}');
       COPY temp TO '${parquetPath}' (FORMAT 'parquet');
-      DROP TABLE temp;
     `;
   } else {
     // 自动推断架构
@@ -46,10 +48,14 @@ async function convertJsonToParquet(jsonPath: string, parquetPath: string, schem
 
   // 执行 DuckDB 命令
   try {
-    await execFileAsync('duckdb', ['-c', sql]);
+    await db.exec(sql);
   } catch (err) {
     console.error('Error converting JSON to Parquet:', err);
     throw err;
+  } finally {
+    // DuckDB in-memory cleanup usually happens on GC, but explicit close if supported
+    // duckdb-async Database doesn't have close(), but connection does.
+    // Here we used db.exec directly.
   }
 }
 
